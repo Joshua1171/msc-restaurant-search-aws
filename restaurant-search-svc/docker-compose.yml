@@ -1,0 +1,59 @@
+# docker-compose.yml — restaurant-search-svc
+# Levanta el servicio con LocalStack para desarrollo local.
+# Uso:
+#   docker compose up -d
+#   docker compose logs -f search-svc
+#   docker compose down
+
+services:
+
+  localstack:
+    image: localstack/localstack:3.8
+    container_name: search-localstack
+    ports:
+      - "4567:4566"
+    environment:
+      - SERVICES=dynamodb
+      - DEBUG=0
+      - AWS_DEFAULT_REGION=us-east-1
+    volumes:
+      - "./scripts/init-localstack.sh:/etc/localstack/init/ready.d/init.sh"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    networks:
+      - search-net
+
+  search-svc:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: search-svc
+    ports:
+      - "8081:8081"
+    environment:
+      - SPRING_PROFILES_ACTIVE=local
+      - AWS_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_ENDPOINT_URL=http://localstack:4566
+      - DYNAMODB_TABLE_NAME=restaurant-restaurants
+      - COGNITO_ISSUER_URI=http://localstack:4566/us-east-1_local
+    depends_on:
+      localstack:
+        condition: service_healthy
+    networks:
+      - search-net
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8081/actuator/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
+networks:
+  search-net:
+    driver: bridge

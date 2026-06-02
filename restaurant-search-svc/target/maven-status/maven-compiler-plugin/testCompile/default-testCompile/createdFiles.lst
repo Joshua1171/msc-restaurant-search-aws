@@ -1,0 +1,3 @@
+com\restaurant\search\ApplicationContextLoadsTest.class
+com\restaurant\search\controller\RestaurantControllerWebMvcTest.class
+com\restaurant\search\service\RestaurantServiceTest.class
